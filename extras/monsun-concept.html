@@ -1,0 +1,713 @@
+<title>monsun concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Martian+Mono:wght@300;400;500&display=swap">
+<style>
+/* Layout: one long studio sheet. Each section is one view of the instrument:
+   signal flow, timing, comb, grid, arc, screen, engine, open questions.
+   Single committed dark look: hardware under dim light, warm grid LEDs, rain-blue delay, lilac comb. */
+:root {
+  --bg: #0d1116;
+  --panel: #141a21;
+  --panel-2: #1a2129;
+  --rule: #26303b;
+  --ink: #e7e8e2;
+  --ink-dim: #96a0a9;
+  --led: #ffd8a1;
+  --rain: #72c4da;
+  --comb: #c4a6ea;
+  --warn: #f2a07b;
+  --key: #232a32;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); }
+body {
+  color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 28px 56px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 56px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 500; }
+h1 { font-family: var(--font-mono); font-size: clamp(34px, 6vw, 56px); letter-spacing: -0.02em; font-weight: 400; }
+h1 span { color: var(--rain); }
+h2 { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--led); font-weight: 400; }
+h3 { font-size: 17px; }
+p { margin: 0; max-width: 68ch; }
+.dim { color: var(--ink-dim); }
+.mono { font-family: var(--font-mono); font-size: 12px; }
+section { display: grid; gap: 18px; min-width: 0; }
+.lede { font-size: 18px; max-width: 62ch; }
+.head { display: grid; gap: 14px; }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag { font-family: var(--font-mono); font-size: 11px; padding: 4px 9px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-dim); }
+.tag b { color: var(--ink); font-weight: 400; }
+.scroll { overflow-x: auto; min-width: 0; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+.cols > div { min-width: 0; display: grid; gap: 8px; align-content: start; }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+
+/* signal flow */
+.flow svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.flow text { font-family: var(--font-mono); fill: var(--ink); }
+
+/* interactive panels */
+.bench { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+.ctl { display: grid; gap: 5px; min-width: 0; }
+.ctl label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+select, input[type="range"] { font: 14px var(--font-body); color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; max-width: 100%; }
+input[type="range"] { padding: 0; accent-color: var(--rain); width: 180px; }
+select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--led); outline-offset: 2px; }
+.readout { font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+canvas.chart { width: 100%; height: auto; display: block; }
+
+/* grid + arc */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button {
+  font: 500 13px var(--font-mono); letter-spacing: 0.06em; color: var(--ink-dim); background: transparent;
+  border: 1px solid var(--rule); border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { color: #1b1408; background: var(--led); border-color: var(--led); }
+.device { background: #101418; border-radius: 12px; padding: 14px; border: 1px solid #1d242c; min-width: 0; }
+.grid128 { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: clamp(3px, 0.6vw, 6px); }
+.gk {
+  aspect-ratio: 1; border-radius: 3px; border: 0; padding: 0; cursor: default; --l: 0;
+  background: color-mix(in oklab, var(--led) calc(var(--l) * 6.6%), var(--key));
+  box-shadow: 0 0 calc(var(--l) * 0.7px) color-mix(in oklab, var(--led) calc(var(--l) * 4%), transparent);
+}
+.gk.sel { outline: 2px solid var(--rain); outline-offset: 1px; }
+.caption { font-family: var(--font-mono); font-size: 12px; min-height: 2.6em; color: var(--ink); }
+.caption .dim { color: var(--ink-dim); }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 24px; }
+.legend div { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.legend dt, .legend .k { font-family: var(--font-mono); font-size: 11px; color: var(--led); padding-top: 3px; }
+.arcrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ring { display: grid; justify-items: center; gap: 6px; text-align: center; min-width: 0; }
+.ring svg { width: 100%; max-width: 132px; height: auto; display: block; }
+.ring b { font-family: var(--font-mono); font-size: 11.5px; font-weight: 400; color: var(--ink); }
+.ring span { font-size: 12.5px; color: var(--ink-dim); }
+@media (max-width: 560px) { .arcrow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* norns screens */
+.screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+.screen { display: grid; gap: 8px; min-width: 0; }
+.screen .bezel { background: #050505; border-radius: 6px; padding: 8px; border: 1px solid #1b1f24; }
+.screen canvas { width: 100%; height: auto; display: block; image-rendering: pixelated; }
+.screen p { font-size: 13.5px; }
+
+/* questions */
+.q { display: grid; gap: 14px; counter-reset: q; }
+.q > div { border-top: 1px solid var(--rule); padding-top: 12px; display: grid; gap: 4px; }
+.q h3::before { counter-increment: q; content: counter(q) ". "; color: var(--led); font-family: var(--font-mono); font-size: 14px; }
+footer { border-top: 1px solid var(--rule); padding-top: 16px; display: grid; gap: 6px; font-size: 13px; }
+footer a { color: var(--rain); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: baseline; margin-right: 4px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header class="head">
+  <h2>Concept for a norns script · grid 128 · arc 4</h2>
+  <h1>mon<span>sun</span></h1>
+  <p class="lede">A 16-tap rhythm delay and a 64-tooth comb resonator, modelled on the Intellijel / Cylonix Rainmaker. The grid is a tap editor: its 16 columns are the 16 taps. The arc sculpts the time and the space; norns shows the rhythm and the comb.</p>
+  <div class="tags">
+    <span class="tag"><b>16</b> rhythm taps</span>
+    <span class="tag"><b>16</b> grooves</span>
+    <span class="tag"><b>64</b> comb teeth</span>
+    <span class="tag"><b>16</b> comb patterns</span>
+    <span class="tag"><b>4</b> routings</span>
+    <span class="tag"><b>4</b> comb feedback types</span>
+    <span class="tag">freeze · reverse · clear · ping</span>
+    <span class="tag">clock sync</span>
+  </div>
+  <p class="dim">Working name: monsun, the monsoon. This page is the plan, not the finished script: try the timing and comb views below, then tell me what to change before I build it.</p>
+</header>
+
+<section class="flow" aria-labelledby="flow-h">
+  <h2 id="flow-h">Signal flow</h2>
+  <div class="scroll">
+  <svg viewBox="0 0 1000 330" role="img" aria-label="Signal flow: input and ping go through routing into the rhythm delay with 16 taps and a feedback path, and into the comb resonator with 64 teeth and its own feedback, then to the dry/wet mix and output.">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#96a0a9"/></marker>
+      <marker id="arR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#72c4da"/></marker>
+      <marker id="arC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c4a6ea"/></marker>
+    </defs>
+    <!-- dry path -->
+    <path d="M155,150 V14 H912 V150" fill="none" stroke="#3a4552" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+    <text x="520" y="10" font-size="10" fill="#96a0a9" text-anchor="middle" style="fill:#96a0a9">dry</text>
+    <!-- in + ping -->
+    <rect x="10" y="80" width="72" height="44" rx="6" fill="#1a2129" stroke="#26303b"/>
+    <text x="46" y="99" font-size="11" text-anchor="middle">PING</text>
+    <text x="46" y="114" font-size="9" text-anchor="middle" style="fill:#96a0a9">noise burst</text>
+    <path d="M46,124 V162" stroke="#96a0a9" stroke-width="1.5" marker-end="url(#ar)"/>
+    <rect x="10" y="165" width="72" height="50" rx="6" fill="#1a2129" stroke="#26303b"/>
+    <text x="46" y="187" font-size="12" text-anchor="middle">IN</text>
+    <text x="46" y="203" font-size="9" text-anchor="middle" style="fill:#96a0a9">L R · file</text>
+    <path d="M82,190 H102" stroke="#96a0a9" stroke-width="1.5" marker-end="url(#ar)"/>
+    <!-- routing -->
+    <rect x="105" y="150" width="100" height="80" rx="6" fill="#1a2129" stroke="#ffd8a1" stroke-opacity="0.5"/>
+    <text x="155" y="172" font-size="11" text-anchor="middle">ROUTING</text>
+    <text x="155" y="190" font-size="9" text-anchor="middle" style="fill:#96a0a9">D›C  C›D</text>
+    <text x="155" y="204" font-size="9" text-anchor="middle" style="fill:#96a0a9">D+C  L|R</text>
+    <path d="M205,175 H246" stroke="#72c4da" stroke-width="1.8" marker-end="url(#arR)"/>
+    <path d="M180,230 V292 H640 V180 H646" fill="none" stroke="#c4a6ea" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arC)"/>
+    <text x="410" y="306" font-size="9.5" text-anchor="middle" style="fill:#96a0a9">comb first · parallel · split (L delay, R comb)</text>
+
+    <!-- delay panel -->
+    <rect x="230" y="28" width="400" height="236" rx="10" fill="#141a21" stroke="#72c4da" stroke-opacity="0.55"/>
+    <text x="246" y="48" font-size="11.5" style="fill:#72c4da">RHYTHM DELAY</text>
+    <text x="614" y="48" font-size="9" text-anchor="end" style="fill:#96a0a9">LFO › time</text>
+    <rect x="248" y="62" width="100" height="112" rx="6" fill="#1a2129" stroke="#26303b"/>
+    <text x="298" y="86" font-size="11" text-anchor="middle">buffer</text>
+    <text x="298" y="102" font-size="9" text-anchor="middle" style="fill:#96a0a9">20 s</text>
+    <text x="298" y="128" font-size="9" text-anchor="middle" style="fill:#96a0a9">freeze</text>
+    <text x="298" y="142" font-size="9" text-anchor="middle" style="fill:#96a0a9">reverse</text>
+    <text x="298" y="156" font-size="9" text-anchor="middle" style="fill:#96a0a9">clear</text>
+    <g id="taprows"></g>
+    <text x="486" y="196" font-size="9.5" text-anchor="middle" style="fill:#96a0a9">× 16 taps · time from grid × groove</text>
+    <circle cx="616" cy="118" r="11" fill="#1a2129" stroke="#72c4da"/>
+    <text x="616" y="122" font-size="12" text-anchor="middle">Σ</text>
+    <!-- feedback row -->
+    <rect x="534" y="214" width="84" height="34" rx="5" fill="#1a2129" stroke="#26303b"/>
+    <text x="576" y="229" font-size="9" text-anchor="middle">fb tap 1–16</text>
+    <text x="576" y="241" font-size="8.5" text-anchor="middle" style="fill:#96a0a9">ALL · SIZE</text>
+    <rect x="470" y="214" width="54" height="34" rx="5" fill="#1a2129" stroke="#26303b"/>
+    <text x="497" y="235" font-size="9" text-anchor="middle">slip</text>
+    <rect x="406" y="214" width="54" height="34" rx="5" fill="#1a2129" stroke="#26303b"/>
+    <text x="433" y="229" font-size="9" text-anchor="middle">pitch</text>
+    <text x="433" y="241" font-size="8.5" text-anchor="middle" style="fill:#96a0a9">±16 st</text>
+    <rect x="342" y="214" width="54" height="34" rx="5" fill="#1a2129" stroke="#26303b"/>
+    <text x="369" y="229" font-size="9" text-anchor="middle">tone</text>
+    <text x="369" y="241" font-size="8.5" text-anchor="middle" style="fill:#96a0a9">LP | HP</text>
+    <rect x="248" y="214" width="84" height="34" rx="5" fill="#1a2129" stroke="#26303b"/>
+    <text x="290" y="229" font-size="9" text-anchor="middle">ping-pong</text>
+    <text x="290" y="241" font-size="8.5" text-anchor="middle" style="fill:#96a0a9">level</text>
+    <path d="M616,129 V212" stroke="#72c4da" stroke-width="1.5" marker-end="url(#arR)"/>
+    <path d="M534,231 H526" stroke="#72c4da" stroke-width="1.5" marker-end="url(#arR)"/>
+    <path d="M470,231 H462" stroke="#72c4da" stroke-width="1.5" marker-end="url(#arR)"/>
+    <path d="M406,231 H398" stroke="#72c4da" stroke-width="1.5" marker-end="url(#arR)"/>
+    <path d="M342,231 H334" stroke="#72c4da" stroke-width="1.5" marker-end="url(#arR)"/>
+    <path d="M262,214 V177" stroke="#72c4da" stroke-width="1.5" marker-end="url(#arR)"/>
+    <path d="M348,118 H366" stroke="#72c4da" stroke-width="1.5" marker-end="url(#arR)"/>
+    <path d="M627,118 H646" stroke="#72c4da" stroke-width="1.8" marker-end="url(#arR)"/>
+    <text x="637" y="110" font-size="8.5" text-anchor="middle" style="fill:#96a0a9">D›C</text>
+
+    <!-- comb panel -->
+    <rect x="650" y="28" width="220" height="236" rx="10" fill="#141a21" stroke="#c4a6ea" stroke-opacity="0.55"/>
+    <text x="666" y="48" font-size="11.5" style="fill:#c4a6ea">COMB RESONATOR</text>
+    <text x="854" y="48" font-size="9" text-anchor="end" style="fill:#96a0a9">LFO › size</text>
+    <g id="teeth"></g>
+    <text x="760" y="160" font-size="9" text-anchor="middle" style="fill:#96a0a9">64 teeth · pattern · density · slope</text>
+    <text x="760" y="174" font-size="9" text-anchor="middle" style="fill:#96a0a9">size = pitch (1 ms … 2 s)</text>
+    <rect x="668" y="200" width="184" height="48" rx="5" fill="#1a2129" stroke="#26303b"/>
+    <text x="760" y="219" font-size="9" text-anchor="middle">tooth 64 › feedback</text>
+    <text x="760" y="236" font-size="8.5" text-anchor="middle" style="fill:#96a0a9">guitar · sitar · clarinet · raw</text>
+    <path d="M760,182 V198" stroke="#c4a6ea" stroke-width="1.5" marker-end="url(#arC)"/>
+    <path d="M668,224 H658 V100 H666" fill="none" stroke="#c4a6ea" stroke-width="1.5" marker-end="url(#arC)"/>
+    <path d="M870,150 H884" stroke="#c4a6ea" stroke-width="1.8" marker-end="url(#arC)"/>
+
+    <!-- mix + out -->
+    <rect x="886" y="150" width="54" height="80" rx="6" fill="#1a2129" stroke="#26303b"/>
+    <text x="913" y="186" font-size="11" text-anchor="middle">MIX</text>
+    <text x="913" y="202" font-size="8.5" text-anchor="middle" style="fill:#96a0a9">dry/wet</text>
+    <path d="M940,190 H986" stroke="#96a0a9" stroke-width="1.8" marker-end="url(#ar)"/>
+    <text x="970" y="182" font-size="10" text-anchor="middle">OUT</text>
+  </svg>
+  </div>
+  <div class="cols">
+    <div><h3>Rhythm delay</h3><p class="dim">One 20-second buffer, read by 16 taps. Each tap has its own pitch shifter (±16 semitones, granular), a resonant filter (low, band or high pass), level and pan. A feedback path takes one tap, all taps, or the comb size, shifts its pitch, colours it and writes it back.</p></div>
+    <div><h3>Comb resonator</h3><p class="dim">A second buffer read by 64 teeth whose spacing follows one of 16 patterns. Its size sets the pitch, so a ping turns it into a plucked string (Karplus-Strong). The feedback loop is clean (raw), damped (guitar), buzzing (sitar) or reedy (clarinet).</p></div>
+    <div><h3>Routing</h3><p class="dim">Delay into comb (default), comb into delay, both in parallel, or split: left input to the delay, right input to the comb. The dry signal always reaches the mix.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="time-h">
+  <h2 id="time-h">Where the 16 taps land</h2>
+  <p>Tap times come from three settings: the <b>beat</b> (from the norns clock, so MIDI clock works), the <b>grid</b> (taps per beat) and the <b>groove</b>. Groove amount fades from straight to the chosen pattern. A <b>stack</b> gives several taps the same time, which makes chords when their pitches differ. Try it:</p>
+  <div class="bench">
+    <div class="controls">
+      <div class="ctl"><label for="groove">groove</label><select id="groove"></select></div>
+      <div class="ctl"><label for="amount">groove amount <span id="amount-v" class="readout"></span></label><input id="amount" type="range" min="0" max="100" value="100"></div>
+      <div class="ctl"><label for="gridsel">grid</label><select id="gridsel"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>6</option><option>8</option><option>12</option><option>16</option></select></div>
+      <div class="ctl"><label for="stack">stack</label><select id="stack"><option>1</option><option>2</option><option>4</option><option>8</option></select></div>
+      <div class="ctl"><label for="fbtap">feedback tap</label><select id="fbtap"></select></div>
+    </div>
+    <canvas id="timeline" class="chart" width="1080" height="250" aria-label="Timeline of the 16 tap positions over four beats"></canvas>
+    <p class="readout" id="time-read"></p>
+  </div>
+</section>
+
+<section aria-labelledby="comb-h">
+  <h2 id="comb-h">The comb's 64 teeth</h2>
+  <p>Each tooth is a tap into the comb buffer. The pattern spaces them across the comb size, density sets how many sound, and slope shapes their levels. At short sizes this is timbre; at long sizes it becomes swells, crescendos and clouds.</p>
+  <div class="bench">
+    <div class="controls">
+      <div class="ctl"><label for="cpat">pattern</label><select id="cpat"></select></div>
+      <div class="ctl"><label for="dens">density <span id="dens-v" class="readout"></span></label><input id="dens" type="range" min="1" max="64" value="64"></div>
+      <div class="ctl"><label for="slope">slope</label><select id="slope"><option>flat</option><option>rising</option><option>falling</option><option>rise / fall</option></select></div>
+    </div>
+    <canvas id="combview" class="chart" width="1080" height="190" aria-label="The 64 comb teeth across the comb size"></canvas>
+    <p class="readout" id="comb-read"></p>
+  </div>
+</section>
+
+<section aria-labelledby="grid-h">
+  <h2 id="grid-h">Grid 128 · four pages</h2>
+  <p>Row 8 is the same on every page: page keys on the left, then six keys that change with the page, then RAMP and RANDOM, then the performance keys PING, FREEZE, REVERSE and ALT. Hover or tap a key to read what it does.</p>
+  <div class="tabs" role="tablist" aria-label="Grid page">
+    <button role="tab" aria-selected="true" data-page="0" id="tab-0">TAPS</button>
+    <button role="tab" aria-selected="false" data-page="1" id="tab-1">RHYTHM</button>
+    <button role="tab" aria-selected="false" data-page="2" id="tab-2">COMB</button>
+    <button role="tab" aria-selected="false" data-page="3" id="tab-3">PRESETS</button>
+  </div>
+  <div class="device"><div class="grid128" id="grid" role="grid" aria-label="grid 128 mockup"></div></div>
+  <div class="caption" id="gcap" aria-live="polite"></div>
+  <div class="legend" id="glegend"></div>
+
+  <h3 style="margin-top:10px">Arc 4 follows the grid page</h3>
+  <div class="device"><div class="arcrow" id="arc"></div></div>
+  <p class="dim">Hold ALT for fine adjustment on every ring. Rings light from 7 o'clock to 5 o'clock; tap select shows 16 segments; bipolar values grow from 12 o'clock.</p>
+</section>
+
+<section aria-labelledby="screen-h">
+  <h2 id="screen-h">norns screen · E1 pages</h2>
+  <div class="screens" id="screens"></div>
+  <p class="dim">E2 selects a value, E3 changes it. K2 freeze, K3 ping. K1 is left to the norns menu.</p>
+</section>
+
+<section aria-labelledby="eng-h">
+  <h2 id="eng-h">Engine plan and differences from the module</h2>
+  <div class="cols">
+    <div>
+      <h3>Built as on the module</h3>
+      <ul class="plain">
+        <li>16 taps with level, pan, filter type, cutoff, Q, pitch and detune each</li>
+        <li>16 grooves with amount, grid 1–16 taps per beat, tap stacks</li>
+        <li>Feedback from any tap, all taps or the comb size, with slip, pitch, tone and ping-pong</li>
+        <li>Freeze, reverse and clear on the delay buffer</li>
+        <li>64-tooth comb, 16 spacing patterns, density, 4 slopes, 4 feedback types</li>
+        <li>Delay-time LFO and comb-size LFO, 8 waveforms each</li>
+        <li>4 routings, ramps across taps, randomize by destination</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Adapted for norns</h3>
+      <ul class="plain">
+        <li>The 16 taps read a mono sum of the input and are panned one by one. That halves the CPU and still gives a wide stereo picture. The dry signal stays stereo.</li>
+        <li>Pitch shifting uses two crossfading grains per tap with a selectable grain size (the module offers 1, 2 or 4 grains).</li>
+        <li>The comb feedback runs through norns' 64-sample control blocks. Pitched combs with all four feedback types reach up to about F5; above that a simpler sample-accurate comb takes over.</li>
+        <li>No CV inputs. In their place: norns MAP for MIDI CC on every parameter, and the arc.</li>
+        <li>Presets morph: recalling one glides between the tap settings.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>How I'll test it before you get it</h3>
+      <ul class="plain">
+        <li>Render the engine offline in SuperCollider and measure tap times, pitch shifts, filter responses, comb pitch accuracy and feedback stability</li>
+        <li>Run the script with the real norns libraries: grid pages, arc, screen, presets and clock</li>
+        <li>Measure CPU against the reverb we just built</li>
+        <li>An audio demo of the presets on test sounds</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="q-h">
+  <h2 id="q-h">Decisions before I build</h2>
+  <div class="q">
+    <div><h3>Mono taps, panned (planned), or fully stereo taps?</h3><p class="dim">Stereo taps keep the left and right inputs separate in every echo, at roughly twice the CPU. On the original norns that could be too heavy.</p></div>
+    <div><h3>Play the comb from MIDI notes?</h3><p class="dim">The COMB page already has a 4-row keyboard. A MIDI note input would let a keyboard or sequencer play the comb as a plucked voice: note sets pitch, velocity sets ping strength.</p></div>
+    <div><h3>Presets: 96 slots with morph, and an A↔B crossfade on the arc?</h3><p class="dim">The PRESETS page holds 96 slots (the first 12 factory presets). Ring 1 there blends between two chosen presets, so you can sweep between two rhythms live.</p></div>
+    <div><h3>A browser preview?</h3><p class="dim">I can also port the engine to the web simulator like dekade, so you can play it before copying it to norns. That adds time; the norns folder comes first either way.</p></div>
+  </div>
+</section>
+
+<footer>
+  <p class="dim">Based on the published feature set of the Intellijel / Cylonix Rainmaker. monsun is an independent norns script inspired by it, not an emulation endorsed by Intellijel or Cylonix.</p>
+  <p>Sources: <a href="https://intellijel.com/shop/eurorack/cylonix-rainmaker/">Intellijel product page</a> · <a href="https://intellijel.com/downloads/manuals/cylonix-rainmaker_manual_v1.09-143.pdf">Rainmaker manual v1.09</a> · <a href="https://www.soundonsound.com/reviews/intellijel-cylonix-rainmaker">Sound On Sound review</a></p>
+</footer>
+</div>
+
+<script>
+const FONT = {" ":{"a":4,"p":[]},"!":{"a":2,"p":[[0,-5],[0,-4],[0,-3],[0,-1]]},"\"":{"a":4,"p":[[0,-5],[2,-5],[0,-4],[2,-4]]},"#":{"a":6,"p":[[1,-5],[3,-5],[0,-4],[1,-4],[2,-4],[3,-4],[4,-4],[1,-3],[3,-3],[0,-2],[1,-2],[2,-2],[3,-2],[4,-2],[1,-1],[3,-1]]},"$":{"a":5,"p":[[2,-5],[1,-4],[2,-4],[3,-4],[0,-3],[1,-3],[2,-2],[3,-2],[0,-1],[1,-1],[2,-1],[2,0]]},"%":{"a":6,"p":[[0,-5],[3,-5],[3,-4],[2,-3],[1,-2],[1,-1],[4,-1]]},"&":{"a":6,"p":[[1,-5],[2,-5],[0,-4],[1,-3],[2,-3],[4,-3],[0,-2],[3,-2],[1,-1],[2,-1],[4,-1]]},"'":{"a":2,"p":[[0,-5],[0,-4]]},"(":{"a":3,"p":[[1,-5],[0,-4],[0,-3],[0,-2],[1,-1]]},")":{"a":3,"p":[[0,-5],[1,-4],[1,-3],[1,-2],[0,-1]]},"*":{"a":4,"p":[[0,-5],[2,-5],[1,-4],[0,-3],[2,-3]]},"+":{"a":4,"p":[[1,-4],[0,-3],[1,-3],[2,-3],[1,-2]]},",":{"a":3,"p":[[1,-1],[0,0]]},"-":{"a":4,"p":[[0,-3],[1,-3],[2,-3]]},".":{"a":2,"p":[[0,-1]]},"/":{"a":6,"p":[[4,-5],[3,-4],[2,-3],[1,-2],[0,-1]]},"0":{"a":5,"p":[[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1]]},"1":{"a":3,"p":[[0,-5],[1,-5],[1,-4],[1,-3],[1,-2],[1,-1]]},"2":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[3,-4],[1,-3],[2,-3],[0,-2],[0,-1],[1,-1],[2,-1],[3,-1]]},"3":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[3,-4],[1,-3],[2,-3],[3,-2],[0,-1],[1,-1],[2,-1]]},"4":{"a":5,"p":[[2,-5],[1,-4],[2,-4],[0,-3],[2,-3],[0,-2],[1,-2],[2,-2],[3,-2],[2,-1]]},"5":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[3,-5],[0,-4],[0,-3],[1,-3],[2,-3],[3,-2],[0,-1],[1,-1],[2,-1]]},"6":{"a":5,"p":[[1,-5],[2,-5],[0,-4],[0,-3],[1,-3],[2,-3],[0,-2],[3,-2],[1,-1],[2,-1]]},"7":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[3,-5],[3,-4],[2,-3],[1,-2],[1,-1]]},"8":{"a":5,"p":[[1,-5],[2,-5],[0,-4],[3,-4],[1,-3],[2,-3],[0,-2],[3,-2],[1,-1],[2,-1]]},"9":{"a":5,"p":[[1,-5],[2,-5],[0,-4],[3,-4],[1,-3],[2,-3],[3,-3],[3,-2],[1,-1],[2,-1]]},":":{"a":2,"p":[[0,-4],[0,-2]]},";":{"a":2,"p":[[0,-4],[0,-2],[0,-1]]},"<":{"a":4,"p":[[2,-5],[1,-4],[0,-3],[1,-2],[2,-1]]},"=":{"a":4,"p":[[0,-4],[1,-4],[2,-4],[0,-2],[1,-2],[2,-2]]},">":{"a":4,"p":[[0,-5],[1,-4],[2,-3],[1,-2],[0,-1]]},"?":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[3,-4],[1,-3],[2,-3],[1,-1]]},"@":{"a":6,"p":[[1,-5],[2,-5],[3,-5],[0,-4],[4,-4],[0,-3],[2,-3],[3,-3],[4,-3],[0,-2],[2,-2],[4,-2],[1,-1],[2,-1],[3,-1]]},"A":{"a":5,"p":[[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[1,-2],[2,-2],[3,-2],[0,-1],[3,-1]]},"B":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[1,-3],[2,-3],[0,-2],[3,-2],[0,-1],[1,-1],[2,-1]]},"C":{"a":4,"p":[[1,-5],[2,-5],[0,-4],[0,-3],[0,-2],[1,-1],[2,-1]]},"D":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[0,-1],[1,-1],[2,-1]]},"E":{"a":4,"p":[[0,-5],[1,-5],[2,-5],[0,-4],[0,-3],[1,-3],[2,-3],[0,-2],[0,-1],[1,-1],[2,-1]]},"F":{"a":4,"p":[[0,-5],[1,-5],[2,-5],[0,-4],[0,-3],[1,-3],[2,-3],[0,-2],[0,-1]]},"G":{"a":5,"p":[[1,-5],[2,-5],[3,-5],[0,-4],[0,-3],[2,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,-1]]},"H":{"a":5,"p":[[0,-5],[3,-5],[0,-4],[3,-4],[0,-3],[1,-3],[2,-3],[3,-3],[0,-2],[3,-2],[0,-1],[3,-1]]},"I":{"a":4,"p":[[0,-5],[1,-5],[2,-5],[1,-4],[1,-3],[1,-2],[0,-1],[1,-1],[2,-1]]},"J":{"a":5,"p":[[2,-5],[3,-5],[3,-4],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1]]},"K":{"a":5,"p":[[0,-5],[3,-5],[0,-4],[2,-4],[0,-3],[1,-3],[0,-2],[2,-2],[0,-1],[3,-1]]},"L":{"a":4,"p":[[0,-5],[0,-4],[0,-3],[0,-2],[0,-1],[1,-1],[2,-1]]},"M":{"a":6,"p":[[0,-5],[4,-5],[0,-4],[1,-4],[3,-4],[4,-4],[0,-3],[2,-3],[4,-3],[0,-2],[4,-2],[0,-1],[4,-1]]},"N":{"a":5,"p":[[0,-5],[3,-5],[0,-4],[1,-4],[3,-4],[0,-3],[2,-3],[3,-3],[0,-2],[3,-2],[0,-1],[3,-1]]},"O":{"a":5,"p":[[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1]]},"P":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[1,-2],[2,-2],[0,-1]]},"Q":{"a":5,"p":[[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,0]]},"R":{"a":5,"p":[[0,-5],[1,-5],[2,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[1,-2],[2,-2],[0,-1],[3,-1]]},"S":{"a":5,"p":[[1,-5],[2,-5],[3,-5],[0,-4],[1,-3],[2,-3],[3,-2],[0,-1],[1,-1],[2,-1]]},"T":{"a":4,"p":[[0,-5],[1,-5],[2,-5],[1,-4],[1,-3],[1,-2],[1,-1]]},"U":{"a":5,"p":[[0,-5],[3,-5],[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1]]},"V":{"a":5,"p":[[0,-5],[3,-5],[0,-4],[3,-4],[0,-3],[2,-3],[0,-2],[2,-2],[1,-1]]},"W":{"a":6,"p":[[0,-5],[4,-5],[0,-4],[2,-4],[4,-4],[0,-3],[2,-3],[4,-3],[0,-2],[2,-2],[4,-2],[1,-1],[3,-1]]},"X":{"a":5,"p":[[0,-5],[3,-5],[0,-4],[3,-4],[1,-3],[2,-3],[0,-2],[3,-2],[0,-1],[3,-1]]},"Y":{"a":5,"p":[[0,-5],[3,-5],[0,-4],[3,-4],[1,-3],[2,-3],[3,-3],[3,-2],[1,-1],[2,-1]]},"Z":{"a":4,"p":[[0,-5],[1,-5],[2,-5],[2,-4],[1,-3],[0,-2],[0,-1],[1,-1],[2,-1]]},"[":{"a":3,"p":[[0,-5],[1,-5],[0,-4],[0,-3],[0,-2],[0,-1],[1,-1]]},"\\":{"a":6,"p":[[0,-5],[1,-4],[2,-3],[3,-2],[4,-1]]},"]":{"a":3,"p":[[0,-5],[1,-5],[1,-4],[1,-3],[1,-2],[0,-1],[1,-1]]},"^":{"a":4,"p":[[1,-5],[0,-4],[2,-4]]},"_":{"a":5,"p":[[0,-1],[1,-1],[2,-1],[3,-1]]},"`":{"a":3,"p":[[0,-5],[1,-4]]},"a":{"a":5,"p":[[1,-4],[2,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,-1]]},"b":{"a":5,"p":[[0,-5],[0,-4],[1,-4],[2,-4],[0,-3],[3,-3],[0,-2],[3,-2],[0,-1],[1,-1],[2,-1]]},"c":{"a":4,"p":[[1,-4],[2,-4],[0,-3],[0,-2],[1,-1],[2,-1]]},"d":{"a":5,"p":[[3,-5],[1,-4],[2,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,-1]]},"e":{"a":5,"p":[[1,-4],[2,-4],[0,-3],[2,-3],[3,-3],[0,-2],[1,-2],[1,-1],[2,-1]]},"f":{"a":4,"p":[[2,-5],[1,-4],[0,-3],[1,-3],[2,-3],[1,-2],[1,-1]]},"g":{"a":5,"p":[[1,-4],[2,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,-1],[3,0],[1,1],[2,1]]},"h":{"a":5,"p":[[0,-5],[0,-4],[1,-4],[2,-4],[0,-3],[3,-3],[0,-2],[3,-2],[0,-1],[3,-1]]},"i":{"a":2,"p":[[0,-5],[0,-3],[0,-2],[0,-1]]},"j":{"a":3,"p":[[1,-5],[1,-3],[1,-2],[1,-1],[1,0],[0,1]]},"k":{"a":5,"p":[[0,-5],[0,-4],[3,-4],[0,-3],[2,-3],[0,-2],[1,-2],[2,-2],[0,-1],[3,-1]]},"l":{"a":2,"p":[[0,-5],[0,-4],[0,-3],[0,-2],[0,-1]]},"m":{"a":6,"p":[[0,-4],[1,-4],[2,-4],[3,-4],[0,-3],[2,-3],[4,-3],[0,-2],[2,-2],[4,-2],[0,-1],[2,-1],[4,-1]]},"n":{"a":5,"p":[[0,-4],[1,-4],[2,-4],[0,-3],[3,-3],[0,-2],[3,-2],[0,-1],[3,-1]]},"o":{"a":5,"p":[[1,-4],[2,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1]]},"p":{"a":5,"p":[[0,-4],[1,-4],[2,-4],[0,-3],[3,-3],[0,-2],[3,-2],[0,-1],[1,-1],[2,-1],[0,0],[0,1]]},"q":{"a":5,"p":[[1,-4],[2,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,-1],[3,0],[3,1]]},"r":{"a":4,"p":[[0,-4],[2,-4],[0,-3],[1,-3],[0,-2],[0,-1]]},"s":{"a":5,"p":[[1,-4],[2,-4],[3,-4],[0,-3],[1,-3],[2,-2],[3,-2],[0,-1],[1,-1],[2,-1]]},"t":{"a":4,"p":[[1,-5],[0,-4],[1,-4],[2,-4],[1,-3],[1,-2],[2,-1]]},"u":{"a":5,"p":[[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,-1]]},"v":{"a":5,"p":[[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[2,-2],[1,-1]]},"w":{"a":6,"p":[[0,-4],[2,-4],[4,-4],[0,-3],[2,-3],[4,-3],[1,-2],[3,-2],[1,-1],[3,-1]]},"x":{"a":4,"p":[[0,-4],[2,-4],[1,-3],[1,-2],[0,-1],[2,-1]]},"y":{"a":5,"p":[[0,-4],[3,-4],[0,-3],[3,-3],[0,-2],[3,-2],[1,-1],[2,-1],[3,-1],[3,0],[1,1],[2,1]]},"z":{"a":5,"p":[[0,-4],[1,-4],[2,-4],[3,-4],[2,-3],[1,-2],[0,-1],[1,-1],[2,-1],[3,-1]]},"{":{"a":4,"p":[[1,-5],[2,-5],[1,-4],[0,-3],[1,-2],[1,-1],[2,-1]]},"|":{"a":2,"p":[[0,-5],[0,-4],[0,-3],[0,-2],[0,-1]]},"}":{"a":4,"p":[[0,-5],[1,-5],[1,-4],[2,-3],[1,-2],[0,-1],[1,-1]]},"~":{"a":5,"p":[[1,-3],[3,-3],[0,-2],[2,-2]]}};
+const PHI = (1 + Math.sqrt(5)) / 2;
+function hash(n, seed) { let x = Math.sin(n * 127.1 + seed * 311.7) * 43758.5453; return x - Math.floor(x); }
+
+// ---------------- grooves: tap n (1-16) -> time in grid spacings
+const GROOVES = [
+  ["Straight", (n) => n],
+  ["Swing", (n) => n + (n % 2 === 0 ? 1 / 3 : 0)],
+  ["Hard swing", (n) => n + (n % 2 === 0 ? 0.5 : 0)],
+  ["Reverse swing", (n) => n - (n % 2 === 0 ? 1 / 3 : 0)],
+  ["Alternate swing", (n) => n + (n % 4 === 2 ? 1 / 3 : n % 4 === 0 ? -0.25 : 0)],
+  ["Accelerando", (n) => 16 * Math.pow(n / 16, 0.62)],
+  ["Ritardando", (n) => 16 * Math.pow(n / 16, 1.55)],
+  ["Waltz time", (n) => (Math.floor((n - 1) / 3) * 4 + ((n - 1) % 3) + 1) * 16 / 21],
+  ["Half swing", (n) => n + (n % 2 === 0 ? 1 / 6 : 0)],
+  ["Roller coaster", (n) => n + 0.45 * Math.sin(2 * Math.PI * n / 8)],
+  ["Quintuple time", (n) => n * 0.8 + Math.floor((n - 1) / 5) * 0.8],
+  ["Random A", (n) => n + (hash(n, 1) - 0.5) * 0.9],
+  ["Random B", (n) => n + (hash(n, 2) - 0.5) * 0.9],
+  ["Random C", (n) => n + (hash(n, 3) - 0.5) * 0.9],
+  ["Early reflection", (n) => 16 * Math.pow(n / 16, 2)],
+  ["Late reflection", (n) => 16 * (1 - Math.pow(1 - n / 16, 2))],
+];
+// ---------------- comb patterns: tooth k (1-64) -> fraction of comb size
+function fibWord() {
+  const d = []; for (let k = 1; k <= 64; k++) d.push(Math.floor((k + 1) / PHI) - Math.floor(k / PHI) ? PHI : 1);
+  const c = []; let s = 0; for (const v of d) { s += v; c.push(s); } return c.map((v) => v / s);
+}
+const FIB = fibWord();
+const BASEPAT = [
+  ["Uniform", (k) => k / 64],
+  ["Flat middle", (k) => { const u = 2 * k / 64 - 1; return 0.5 + 0.5 * Math.sign(u) * u * u; }],
+  ["Early comb", (k) => Math.pow(k / 64, 2)],
+  ["Fibonacci", (k) => FIB[k - 1]],
+  ["Flat comb", (k) => { const g = Math.floor((k - 1) / 8), j = (k - 1) % 8; return (g + 0.6 + 0.4 * j / 7) / 8; }],
+  ["Late comb", (k) => 1 - Math.pow(1 - k / 64, 2)],
+  ["Rev. Fibonacci", (k) => k === 64 ? 1 : 1 - FIB[63 - k]],
+  ["Ess comb", (k) => { const u = 2 * k / 64 - 1; return 0.5 + 0.5 * Math.sign(u) * Math.sqrt(Math.abs(u)); }],
+];
+const COMBPAT = BASEPAT.concat(BASEPAT.map(([n, f], i) => ["Rand " + n.replace("Rev. ", "Rev ").replace(" comb", "").replace("Flat middle", "Middle"), (k) => {
+  if (k === 64) return 1;
+  const a = f(Math.max(1, k - 1)), b = f(k), c = f(Math.min(64, k + 1));
+  return Math.min(1, Math.max(0.001, b + (hash(k, 7 + i) - 0.5) * 0.8 * (c - a) / 2));
+}]));
+const SLOPES = [(x) => 1, (x) => 0.15 + 0.85 * x, (x) => 1 - 0.85 * x, (x) => 0.15 + 0.85 * (1 - Math.abs(2 * x - 1))];
+
+// ---------------- signal-flow decorations
+(function () {
+  const ns = "http://www.w3.org/2000/svg", g = document.getElementById("taprows");
+  [62, 96, 130].forEach((y, r) => {
+    [["pitch", 370], ["filter", 450], ["lvl · pan", 530]].forEach(([t, x], i) => {
+      const rect = document.createElementNS(ns, "rect");
+      Object.entries({ x, y, width: 70, height: 26, rx: 5, fill: "#1a2129", stroke: "#26303b", opacity: 1 - r * 0.3 }).forEach(([k, v]) => rect.setAttribute(k, v));
+      g.appendChild(rect);
+      const tx = document.createElementNS(ns, "text");
+      Object.entries({ x: x + 35, y: y + 17, "font-size": 9.5, "text-anchor": "middle", opacity: 1 - r * 0.3 }).forEach(([k, v]) => tx.setAttribute(k, v));
+      tx.textContent = t; g.appendChild(tx);
+      if (i < 2) {
+        const p = document.createElementNS(ns, "path");
+        p.setAttribute("d", `M${x + 70},${y + 13} H${x + 78}`); p.setAttribute("stroke", "#72c4da"); p.setAttribute("stroke-width", "1.2"); p.setAttribute("opacity", 1 - r * 0.3);
+        g.appendChild(p);
+      }
+    });
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", `M366,118 L370,${y + 13}`); p.setAttribute("stroke", "#72c4da"); p.setAttribute("stroke-width", "1"); p.setAttribute("opacity", 0.5);
+    g.appendChild(p);
+    const q = document.createElementNS(ns, "path");
+    q.setAttribute("d", `M600,${y + 13} L605,118`); q.setAttribute("stroke", "#72c4da"); q.setAttribute("stroke-width", "1"); q.setAttribute("opacity", 0.5);
+    g.appendChild(q);
+  });
+  const t = document.getElementById("teeth");
+  for (let k = 1; k <= 64; k++) {
+    const x = 670 + 180 * COMBPAT[3][1](k), h = 64 * SLOPES[2](k / 64);
+    const l = document.createElementNS(ns, "line");
+    Object.entries({ x1: x, x2: x, y1: 140, y2: 140 - h, stroke: "#c4a6ea", "stroke-width": 1, opacity: 0.85 }).forEach(([a, v]) => l.setAttribute(a, v));
+    t.appendChild(l);
+  }
+})();
+
+// ---------------- timeline
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const grooveSel = document.getElementById("groove"), amt = document.getElementById("amount"), gsel = document.getElementById("gridsel");
+const ssel = document.getElementById("stack"), fsel = document.getElementById("fbtap");
+GROOVES.forEach(([n], i) => grooveSel.add(new Option(`${i + 1} · ${n}`, i)));
+grooveSel.value = 1;
+for (let i = 1; i <= 16; i++) fsel.add(new Option("tap " + i, i));
+fsel.add(new Option("ALL", 17));
+fsel.value = 16;
+const TAPLVL = Array.from({ length: 16 }, (_, i) => 1 - i * 0.045);
+const TAPPAN = Array.from({ length: 16 }, (_, i) => Math.sin(i * 1.9) * 0.8);
+function tapTimes() {
+  const g = GROOVES[+grooveSel.value][1], a = amt.value / 100, grid = +gsel.value, st = +ssel.value;
+  const out = [];
+  for (let n = 1; n <= 16; n++) {
+    const m = Math.floor((n - 1) / st) * st + st;    // stacked taps share the time of the last tap in their stack
+    const pos = (1 - a) * m + a * g(m);
+    out.push(pos / grid);                            // in beats
+  }
+  return out;
+}
+function drawTimeline() {
+  const c = document.getElementById("timeline"), x = c.getContext("2d"), W = c.width, H = c.height;
+  x.clearRect(0, 0, W, H);
+  const t = tapTimes(), maxB = Math.max(4, Math.ceil(Math.max(...t) + 0.25));
+  const L = 40, R = W - 20, base = 200, top = 34;
+  const tx = (b) => L + (R - L) * b / maxB;
+  x.font = "20px 'Martian Mono', monospace"; x.textBaseline = "alphabetic";
+  // beat grid
+  for (let b = 0; b <= maxB; b++) {
+    x.strokeStyle = css("--rule"); x.lineWidth = b % 4 === 0 ? 2 : 1;
+    x.beginPath(); x.moveTo(tx(b), top - 6); x.lineTo(tx(b), base + 6); x.stroke();
+    x.fillStyle = css("--ink-dim"); x.textAlign = "center"; x.fillText(b === 0 ? "in" : "beat " + b, tx(b), base + 34);
+  }
+  const fb = +fsel.value;
+  // input hit
+  x.fillStyle = css("--ink"); x.fillRect(tx(0) - 2, top, 4, base - top);
+  const counts = {};
+  t.forEach((b, i) => {
+    const key = b.toFixed(4); counts[key] = (counts[key] || 0) + 1;
+    const stackOff = (counts[key] - 1) * 7;
+    const h = (base - top) * TAPLVL[i];
+    const isFb = fb === i + 1 || fb === 17;
+    x.fillStyle = isFb && fb !== 17 ? css("--led") : css("--rain");
+    x.globalAlpha = 0.9;
+    x.fillRect(tx(b) - 3 + stackOff, base - h, 6, h);
+    x.globalAlpha = 1;
+    // pan dot
+    x.fillStyle = css("--ink-dim");
+    x.beginPath(); x.arc(tx(b) + stackOff, base - h - 10, 3, 0, Math.PI * 2); x.fill();
+    if (counts[key] === 1) { x.fillStyle = css("--ink"); x.textAlign = "center"; x.font = "16px 'Martian Mono', monospace"; x.fillText(i + 1, tx(b), base + 14 + 0); x.font = "20px 'Martian Mono', monospace"; }
+  });
+  if (fb >= 1 && fb <= 16) {
+    const b = t[fb - 1];
+    x.strokeStyle = css("--led"); x.lineWidth = 2; x.setLineDash([6, 6]);
+    x.beginPath(); x.moveTo(tx(b), top - 10); x.quadraticCurveTo((tx(b) + tx(0)) / 2, top - 40, tx(0) + 4, top - 4); x.stroke(); x.setLineDash([]);
+    x.fillStyle = css("--led"); x.textAlign = "left"; x.fillText("feedback", tx(b) + 10, top + 4);
+  }
+  const ms = (b) => Math.round(b * 500);
+  document.getElementById("amount-v").textContent = amt.value + "%";
+  document.getElementById("time-read").textContent =
+    `At 120 bpm: first tap ${ms(Math.min(...t))} ms, last tap ${ms(Math.max(...t))} ms` +
+    (fb <= 16 ? `, feedback loop ${ms(t[fb - 1])} ms (tap ${fb})` : ", feedback from the sum of all taps") +
+    `. Distinct times: ${new Set(t.map((v) => v.toFixed(4))).size}.`;
+}
+[grooveSel, amt, gsel, ssel, fsel].forEach((el) => el.addEventListener("input", () => { drawTimeline(); }));
+
+// ---------------- comb view
+const cpat = document.getElementById("cpat"), dens = document.getElementById("dens"), slope = document.getElementById("slope");
+COMBPAT.forEach(([n], i) => cpat.add(new Option(`${i + 1} · ${n}`, i)));
+cpat.value = 3;
+function drawComb() {
+  const c = document.getElementById("combview"), x = c.getContext("2d"), W = c.width, H = c.height;
+  x.clearRect(0, 0, W, H);
+  const f = COMBPAT[+cpat.value][1], s = SLOPES[slope.selectedIndex], d = +dens.value;
+  const L = 30, R = W - 20, base = 150, top = 16;
+  x.strokeStyle = css("--rule"); x.lineWidth = 1; x.beginPath(); x.moveTo(L, base + 0.5); x.lineTo(R, base + 0.5); x.stroke();
+  for (let k = 1; k <= 64; k++) {
+    const px = L + (R - L) * f(k), h = (base - top) * s(k / 64);
+    const on = k <= d || k === 64;
+    x.fillStyle = k === 64 ? css("--led") : css("--comb"); x.globalAlpha = on ? 0.95 : 0.16;
+    x.fillRect(px - 2, base - h, 4, h);
+  }
+  x.globalAlpha = 1; x.fillStyle = css("--ink-dim"); x.font = "18px 'Martian Mono', monospace";
+  x.textAlign = "left"; x.fillText("0", L, base + 28); x.textAlign = "right"; x.fillText("comb size  (tooth 64 = feedback)", R, base + 28);
+  document.getElementById("dens-v").textContent = d;
+  const hz = (ms) => (1000 / ms).toFixed(1);
+  document.getElementById("comb-read").textContent = `Comb size 9.09 ms = A2, 110 Hz. ${d} of 64 teeth sound; tooth 64 always feeds the comb's feedback loop.`;
+}
+[cpat, dens, slope].forEach((el) => el.addEventListener("input", drawComb));
+
+// ---------------- grid pages
+const ROW8 = [
+  ["TAPS", "page: per-tap editing"], ["RHYTHM", "page: groove, grid, feedback"], ["COMB", "page: comb resonator and keyboard"], ["PRESETS", "page: 96 preset slots"],
+];
+const PAGE_KEYS = [
+  [["LEVEL", "tap faders show level (0–15)"], ["PAN", "tap faders show pan, centre between rows 3 and 4"], ["CUTOFF", "tap faders show filter cutoff"], ["Q", "tap faders show filter resonance"], ["PITCH", "tap faders choose an interval: +12 +7 +5 0 −5 −12"], ["TYPE", "tap faders choose filter: off, LP, BP, HP"]],
+  [["TAP", "tap tempo (averages the last 3 presses)"], ["SYNC", "follow the norns clock / free time"], ["PING-PONG", "swap left and right in the feedback"], ["DELAY", "delay on / bypass"], ["DLY MUTE", "mute the delay input, the tail keeps ringing"], ["SLIP", "hold: row 7 sets slip"]],
+  [["OCT −", "keyboard one octave down"], ["OCT +", "keyboard one octave up"], ["PING ON KEY", "keyboard presses also ping the comb"], ["EXCITER", "noise burst / smooth pulse"], ["COMB", "comb on / bypass"], ["CMB MUTE", "mute the comb input"]],
+  [["MORPH", "cycle morph time: off, ½ beat, 1 beat, 1 bar, 4 bars"], ["SET A", "hold and press a slot: preset A for the arc crossfade"], ["SET B", "hold and press a slot: preset B for the arc crossfade"], ["CLEAR", "clear both buffers"], ["RND DEST", "row 7 picks what RANDOM changes"], ["SAVE", "hold and press a slot to save"]],
+];
+const COMMON_RIGHT = [["RAMP", "apply the next of 8 ramp shapes across the 16 taps"], ["RANDOM", "randomize the current destination"], ["PING", "noise burst into the input"], ["FREEZE", "loop the buffer at the feedback tap time"], ["REVERSE", "play the buffer backwards"], ["ALT", "hold: fine arc, secondary functions"]];
+const GROOVE_NAMES = GROOVES.map((g) => g[0]);
+function pageModel(p) {
+  // returns 128 entries {l, label}
+  const m = []; const put = (x, y, l, label) => { m[(y - 1) * 16 + (x - 1)] = { l, label }; };
+  for (let y = 1; y <= 8; y++) for (let x = 1; x <= 16; x++) put(x, y, 0, "");
+  ROW8.forEach(([n, d], i) => put(i + 1, 8, i === p ? 14 : 4, `${n} — ${d}`));
+  PAGE_KEYS[p].forEach(([n, d], i) => put(i + 5, 8, (p === 0 && i === 0) || (p === 1 && i === 1) || (p === 2 && i === 4) || (p === 1 && i === 3) ? 11 : 4, `${n} — ${d}`));
+  COMMON_RIGHT.forEach(([n, d], i) => put(i + 11, 8, i === 3 ? 12 : (i === 5 ? 3 : 5), `${n} — ${d}`));
+  if (p === 0) {
+    for (let x = 1; x <= 16; x++) {
+      const v = TAPLVL[x - 1] * 15, head = Math.round((v / 15) * 5);   // 0..5 -> rows 6..1
+      for (let r = 1; r <= 6; r++) {
+        const lvl = 6 - r;
+        put(x, r, lvl < head ? 6 : lvl === head ? 14 : 0, `tap ${x} level — press to set (row 1 = 15, row 6 = 0)`);
+      }
+      const muted = x === 6 || x === 11;
+      put(x, 7, muted ? 1 : 7, `tap ${x} ${muted ? "muted" : "on"} — press to mute; flashes when the tap fires; ALT + press selects the tap for the arc`);
+    }
+  } else if (p === 1) {
+    for (let x = 1; x <= 16; x++) {
+      put(x, 1, x === 2 ? 13 : 3, `groove ${x}: ${GROOVE_NAMES[x - 1]}`);
+      put(x, 2, x <= 11 ? (x === 11 ? 13 : 5) : 1, `groove amount ${Math.round((x - 1) / 15 * 100)}%`);
+      put(x, 3, x <= 8 ? (x === 4 ? 13 : 3) : (x === 13 ? 13 : 3), x <= 8 ? `grid: ${[1, 2, 3, 4, 6, 8, 12, 16][x - 1]} taps per beat` : `beat length: ${["1/4", "1/3", "1/2", "2/3", "1", "3/2", "2", "4"][x - 9]} beat`);
+      put(x, 4, x <= 4 ? (x === 1 ? 13 : 3) : x >= 9 ? (x === 10 ? 13 : 3) : 0, x <= 4 ? `stack: ${[1, 2, 4, 8][x - 1]} taps share one time` : x >= 9 ? `delay-time LFO: ${["off", "sine", "triangle", "vibrato 1", "vibrato 2", "down chirp", "up chirp", "random"][x - 9]}` : "");
+      put(x, 5, x === 16 ? 13 : 3, `feedback from tap ${x} — press the lit key again for ALL, ALT + press for COMB SIZE`);
+      const st = [-12, -7, -5, -3, 0, 3, 4, 5, 7, 12, 19, 24];
+      put(x, 6, x <= 12 ? (x === 5 ? 13 : 3) : 0, x <= 12 ? `feedback pitch ${st[x - 1] > 0 ? "+" : ""}${st[x - 1]} semitones` : "");
+      put(x, 7, x === 9 ? 13 : (x < 9 ? 2 : 2), `feedback slip ${x - 9 > 0 ? "+" : ""}${x - 9}: push the feedback earlier or later`);
+    }
+  } else if (p === 2) {
+    for (let x = 1; x <= 16; x++) {
+      put(x, 1, x === 4 ? 13 : 3, `comb pattern ${x}: ${COMBPAT[x - 1][0]}`);
+      put(x, 2, x <= 16 ? (x === 16 ? 13 : 5) : 1, `density ${x * 4} teeth`);
+      const r3 = ["slope flat", "slope rising", "slope falling", "slope rise/fall", "feedback guitar", "feedback sitar", "feedback clarinet", "feedback raw", "routing delay › comb", "routing comb › delay", "routing parallel", "routing split L|R", "size: free (arc)", "size: keyboard / MIDI", "size: follows delay", "size: clock"];
+      put(x, 3, [1, 6, 9, 14].includes(x) ? 13 : 3, r3[x - 1]);
+      const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      for (let r = 4; r <= 7; r++) {
+        const semi = (x - 1) + (7 - r) * 5, oct = 1 + Math.floor((semi + 0) / 12), nn = NOTES[semi % 12];
+        const isC = semi % 12 === 0, cur = semi === 9 + 12;
+        put(x, r, cur ? 15 : isC ? 5 : (nn.length === 1 ? 2 : 1), `keyboard ${nn}${oct} — sets comb pitch and pings; rows are a fourth apart`);
+      }
+    }
+  } else {
+    for (let y = 1; y <= 6; y++) for (let x = 1; x <= 16; x++) {
+      const i = (y - 1) * 16 + x;
+      put(x, y, i === 3 ? 14 : i <= 12 ? 6 : i <= 15 ? 4 : 1, i <= 12 ? `preset ${i} (factory) — press to recall with morph` : `preset slot ${i}${i <= 15 ? " (stored)" : " (empty)"}`);
+    }
+    const RD = ["groove times", "tap mutes", "tap levels", "tap pans", "filter cutoffs", "filter Qs", "tap pitches", "comb", "delay globals", "all taps", "all delay", "taps + delay", "comb + delay", "everything", "pick one at random", "—"];
+    for (let x = 1; x <= 16; x++) put(x, 7, x === 7 ? 12 : x === 16 ? 0 : 3, `random destination: ${RD[x - 1]}`);
+  }
+  return m;
+}
+const ARCS = [
+  [["tap select", "which tap the arc edits", "seg", 4], ["tap value", "level, pan, cutoff, Q or pitch of the selected tap", "val", 0.7], ["global pitch", "transpose all 16 taps, ±24 semitones", "bi", 0.35], ["mix", "dry / wet", "val", 0.45]],
+  [["beat time", "delay time when not synced; multiplier when synced", "val", 0.55], ["groove amount", "straight › groove", "val", 0.66], ["feedback", "delay feedback level", "val", 0.5], ["tone", "feedback LP ‹ flat › HP", "bi", -0.3]],
+  [["comb size", "pitch, fine, with note readout", "val", 0.42], ["comb feedback", "decay of the resonance", "val", 0.78], ["density", "1–64 teeth", "val", 1], ["delay ‹› comb", "balance of the two outputs", "bi", 0.2]],
+  [["A ↔ B", "crossfade between presets A and B", "val", 0.3], ["LFO depth", "delay-time modulation", "val", 0.25], ["LFO rate", "delay-time modulation", "val", 0.4], ["grain size", "5 ms … 671 ms", "val", 0.5]],
+];
+function ringSVG(kind, v) {
+  const ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg");
+  s.setAttribute("viewBox", "0 0 120 120"); s.setAttribute("aria-hidden", "true");
+  const bg = document.createElementNS(ns, "circle"); bg.setAttribute("cx", 60); bg.setAttribute("cy", 60); bg.setAttribute("r", 57); bg.setAttribute("fill", "#16191d"); s.appendChild(bg);
+  for (let i = 0; i < 64; i++) {
+    let l = 0;
+    if (kind === "seg") { const seg = Math.floor(i / 4); l = seg === v - 1 ? 14 : (i % 4 === 0 ? 3 : 1); }
+    else if (kind === "bi") {
+      const span = Math.round(Math.abs(v) * 24), rel = v >= 0 ? i : (64 - i) % 64;
+      l = rel <= span ? (rel === span ? 15 : 5) : (i <= 24 || i >= 40 ? 1 : 0); if (i === 0) l = Math.max(l, 9);
+    } else {
+      const j = (i - 40 + 64) % 64; const tip = Math.round(v * 47);
+      l = j <= 47 ? (j < tip ? 5 : j === tip ? 15 : 1) : 0;
+    }
+    const a = i / 64 * Math.PI * 2 - Math.PI / 2, c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", 60 + Math.cos(a) * 47); c.setAttribute("cy", 60 + Math.sin(a) * 47); c.setAttribute("r", 3.2);
+    c.setAttribute("fill", l ? `rgba(255,216,161,${0.18 + 0.82 * Math.pow(l / 15, 0.7)})` : "#262a30");
+    s.appendChild(c);
+  }
+  const k = document.createElementNS(ns, "circle"); k.setAttribute("cx", 60); k.setAttribute("cy", 60); k.setAttribute("r", 30); k.setAttribute("fill", "#b9bab4"); s.appendChild(k);
+  return s;
+}
+const gridEl = document.getElementById("grid"), cap = document.getElementById("gcap"), leg = document.getElementById("glegend"), arcEl = document.getElementById("arc");
+const keys = [];
+for (let i = 0; i < 128; i++) {
+  const b = document.createElement("button"); b.className = "gk"; b.type = "button";
+  b.addEventListener("mouseenter", () => showKey(i)); b.addEventListener("focus", () => showKey(i)); b.addEventListener("click", () => showKey(i));
+  gridEl.appendChild(b); keys.push(b);
+}
+let page = 0, model = pageModel(0);
+const LEGENDS = [
+  [["rows 1–6", "16 tap faders for the chosen parameter (row 8, keys 5–10). Drag across to draw a shape."], ["row 7", "tap mutes. Each key flashes when its tap fires, so the rhythm is visible."], ["ALT + row 7", "selects the tap the arc edits."], ["RAMP", "8 shapes: rising, falling, V, Λ, odd/even, saw ×2, random walk."]],
+  [["row 1", "16 grooves."], ["row 2", "groove amount, straight on the left."], ["row 3", "grid (taps per beat) and beat length."], ["row 4", "tap stacks and the delay-time LFO waveform."], ["row 5", "feedback tap. Again = ALL, ALT = COMB SIZE."], ["rows 6–7", "feedback pitch and slip."]],
+  [["row 1", "16 tooth patterns."], ["row 2", "density, 4 to 64 teeth."], ["row 3", "slope, feedback type, routing, size source."], ["rows 4–7", "keyboard in fourths, C marked. Plays the comb as a plucked string."]],
+  [["rows 1–6", "96 preset slots; 1–12 are factory presets. Press to recall with morph."], ["row 7", "what RANDOM changes."], ["SET A / B", "pick the two presets the arc crossfades."], ["SAVE", "hold, then press a slot."]],
+];
+function showKey(i) {
+  keys.forEach((k) => k.classList.remove("sel")); keys[i].classList.add("sel");
+  const x = (i % 16) + 1, y = Math.floor(i / 16) + 1, lab = model[i].label;
+  cap.innerHTML = `<span class="dim">x${x} y${y}</span> &nbsp; ${lab ? lab.replace(/&/g, "&amp;").replace(/</g, "&lt;") : '<span class="dim">unused</span>'}`;
+}
+function renderPage(p) {
+  page = p; model = pageModel(p);
+  model.forEach((m, i) => { keys[i].style.setProperty("--l", m.l); keys[i].setAttribute("aria-label", `x${(i % 16) + 1} y${Math.floor(i / 16) + 1}: ${m.label || "unused"}`); });
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", +b.dataset.page === p ? "true" : "false"));
+  leg.innerHTML = LEGENDS[p].map(([k, d]) => `<div><span class="k">${k}</span><span>${d}</span></div>`).join("");
+  arcEl.innerHTML = "";
+  ARCS[p].forEach(([n, d, kind, v], i) => {
+    const r = document.createElement("div"); r.className = "ring";
+    r.appendChild(ringSVG(kind, v));
+    const b = document.createElement("b"); b.textContent = `${i + 1} · ${n}`; r.appendChild(b);
+    const s = document.createElement("span"); s.textContent = d; r.appendChild(s);
+    arcEl.appendChild(r);
+  });
+  showKey(p === 2 ? 3 * 16 + 9 : 0);
+}
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => renderPage(+b.dataset.page)));
+
+// tap flashes on the TAPS page, following the timeline settings at 100 bpm
+let t0 = performance.now();
+function animate(now) {
+  if (page === 0 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const beatMs = 600, t = tapTimes(), loop = Math.max(4, Math.ceil(Math.max(...t) + 0.5)) * beatMs;
+    const ph = (now - t0) % loop;
+    for (let x = 1; x <= 16; x++) {
+      const i = 6 * 16 + (x - 1), base = model[i].l;
+      const d = ph - t[x - 1] * beatMs;
+      keys[i].style.setProperty("--l", base > 1 && d >= 0 && d < 110 ? 15 : base);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+// ---------------- norns screens (real norns font)
+function scr(canvas, draw) {
+  const x = canvas.getContext("2d"); x.fillStyle = "#000"; x.fillRect(0, 0, 128, 64);
+  const lv = (l) => { const v = Math.round(255 * Math.pow(l / 15, 0.75)); return `rgb(${v},${v},${Math.round(v * 0.96)})`; };
+  const api = {
+    level: (l) => { x.fillStyle = lv(l); x.strokeStyle = lv(l); },
+    text: (s, px, py, align) => {
+      let w = 0; for (const ch of s) w += (FONT[ch] || FONT["?"]).a;
+      let cx = Math.round(align === "r" ? px - w : align === "c" ? px - w / 2 : px);
+      for (const ch of s) { const g = FONT[ch] || FONT["?"]; for (const [a, b] of g.p) x.fillRect(cx + a, py + b, 1, 1); cx += g.a; }
+    },
+    rect: (a, b, w, h) => x.fillRect(a, b, w, h),
+    px: (a, b) => x.fillRect(a, b, 1, 1),
+  };
+  draw(api);
+}
+function screens() {
+  const S = document.getElementById("screens");
+  const items = [
+    ["TAPS", "The 16 taps on a time line. Height is level, the dot is pan, the marked tap feeds back. The selected tap's settings are listed below.", (a) => {
+      a.level(15); a.text("TAPS", 0, 7); a.level(5); a.text("level", 64, 7, "c"); a.level(8); a.text("120 bpm", 127, 7, "r");
+      a.level(2); a.rect(0, 9, 128, 1);
+      const t = tapTimes(), mx = Math.max(...t);
+      t.forEach((b, i) => {
+        const X = 3 + Math.round(b / mx * 120), h = Math.round(TAPLVL[i] * 24);
+        a.level(i === 4 ? 15 : (i === 15 ? 10 : 6)); a.rect(X, 40 - h, 1, h);
+        a.level(4); a.px(X + Math.round(TAPPAN[i] * 2), 40 - h - 3);
+      });
+      a.level(10); a.rect(3 + Math.round(t[15] / mx * 120) - 1, 42, 3, 1); a.level(2); a.rect(0, 41, 128, 1);
+      a.level(15); a.text("tap 5", 0, 52); a.level(8); a.text("lvl 13  pan L2", 127, 52, "r");
+      a.level(6); a.text("LP 1.2k q 4", 0, 61); a.text("+7 st", 127, 61, "r");
+    }],
+    ["RHYTHM", "Groove, grid and the feedback loop: which tap returns, how it is pitched and coloured.", (a) => {
+      a.level(15); a.text("RHYTHM", 0, 7); a.level(8); a.text("sync 1/4", 127, 7, "r"); a.level(2); a.rect(0, 9, 128, 1);
+      a.level(4); a.text("groove", 0, 19); a.level(15); a.text("2 swing", 127, 19, "r");
+      a.level(4); a.text("amount", 0, 28); a.level(3); a.rect(48, 24, 79, 3); a.level(12); a.rect(48, 24, 52, 3);
+      a.level(4); a.text("grid  stack", 0, 37); a.level(12); a.text("4  1", 127, 37, "r");
+      a.level(4); a.text("feedback", 0, 49); a.level(15); a.text("tap 16  52%", 127, 49, "r");
+      a.level(4); a.text("pitch tone", 0, 58); a.level(10); a.text("+0  LP 30%", 127, 58, "r");
+    }],
+    ["COMB", "The 64 teeth across the comb size, with the note the comb is tuned to and the feedback type.", (a) => {
+      a.level(15); a.text("COMB", 0, 7); a.level(8); a.text("A2  110.0 Hz", 127, 7, "r"); a.level(2); a.rect(0, 9, 128, 1);
+      const f = COMBPAT[3][1], s = SLOPES[2];
+      for (let k = 1; k <= 64; k++) { const X = 2 + Math.round(f(k) * 123), h = Math.round(s(k / 64) * 26); a.level(k === 64 ? 15 : 7); a.rect(X, 40 - h, 1, h); }
+      a.level(2); a.rect(0, 41, 128, 1);
+      a.level(4); a.text("fibonacci  64", 0, 52); a.level(10); a.text("falling", 127, 52, "r");
+      a.level(4); a.text("sitar", 0, 61); a.level(15); a.text("fb 78%", 127, 61, "r");
+    }],
+    ["MIX", "Routing, the two sections' levels, and the performance states: freeze, reverse, mutes.", (a) => {
+      a.level(15); a.text("MIX", 0, 7); a.level(15); a.text("FREEZE", 127, 7, "r"); a.level(2); a.rect(0, 9, 128, 1);
+      a.level(10); a.text("IN > DLY > CMB > OUT", 64, 21, "c");
+      const m = [["in", 0.6], ["dly", 0.75], ["fbk", 0.45], ["cmb", 0.55], ["out", 0.7]];
+      m.forEach(([n, v], i) => { const X = 8 + i * 25; a.level(3); a.rect(X, 28, 5, 20); a.level(12); a.rect(X, 48 - Math.round(v * 20), 5, Math.round(v * 20)); a.level(5); a.text(n, X + 2, 57, "c"); });
+      a.level(4); a.text("mix", 0, 63); a.level(12); a.text("62%", 30, 63);
+    }],
+  ];
+  items.forEach(([name, desc, draw]) => {
+    const d = document.createElement("div"); d.className = "screen";
+    d.innerHTML = `<div class="bezel"><canvas width="128" height="64" aria-label="norns screen: ${name} page"></canvas></div><p><b class="mono">${name}</b> &nbsp;${desc}</p>`;
+    S.appendChild(d); scr(d.querySelector("canvas"), draw);
+  });
+}
+
+function boot() { drawTimeline(); drawComb(); renderPage(0); screens(); requestAnimationFrame(animate); }
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawTimeline(); drawComb(); });
+boot();
+</script>
